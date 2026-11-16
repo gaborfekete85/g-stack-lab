@@ -78,3 +78,11 @@ def test_clear_without_status_done_is_400_and_removes_nothing() -> None:
     assert c.delete("/todos").status_code == 400
     assert c.delete("/todos?status=open").status_code == 400
     assert len(c.get("/todos").json()) == 3
+
+
+def test_clear_with_any_other_status_is_400_and_removes_nothing() -> None:
+    c = three_todos_two_done()
+    for status in ("all", "DONE", "Done", "", "done ", "open"):
+        res = c.delete("/todos", params={"status": status})
+        assert res.status_code == 400, status
+    assert [t["title"] for t in c.get("/todos").json()] == ["a", "b", "c"]
