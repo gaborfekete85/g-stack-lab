@@ -9,6 +9,7 @@ from fastapi.responses import HTMLResponse, JSONResponse
 from .store import STATUSES, Store
 
 INDEX_HTML = Path(__file__).parent / "static" / "index.html"
+SORTS = ("title",)
 
 
 async def _json_body(request: Request) -> dict[str, Any]:
@@ -33,10 +34,15 @@ def create_app(store: Store | None = None) -> FastAPI:
         return INDEX_HTML.read_text()
 
     @app.get("/todos")
-    def list_todos(status: str = "all") -> Response:
+    def list_todos(status: str = "all", sort: str | None = None) -> Response:
         if status not in STATUSES:
             return JSONResponse({"error": f"status must be one of {', '.join(STATUSES)}"}, 400)
-        return JSONResponse([t.to_json() for t in store.list(status)])
+        if sort is not None and sort not in SORTS:
+            return JSONResponse({"error": f"sort must be one of {', '.join(SORTS)}"}, 400)
+        todos = store.list(status)
+        if sort == "title":
+            todos.sort(key=lambda t: t.title.casefold())
+        return JSONResponse([t.to_json() for t in todos])
 
     @app.post("/todos")
     async def create_todo(request: Request) -> Response:
