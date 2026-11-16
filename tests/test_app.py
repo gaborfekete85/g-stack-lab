@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from fastapi.testclient import TestClient
+from httpx import Response
 
 from lab.app import create_app
 
@@ -50,3 +51,30 @@ def test_serves_the_ui() -> None:
     res = client().get("/")
     assert res.status_code == 200
     assert "<title>g-stack lab · todos</title>" in res.text
+
+
+def search_client() -> TestClient:
+    c = client()
+    for title in ("Buy milk", "Call mom", "buy bread"):
+        c.post("/todos", json={"title": title})
+    return c
+
+
+def titles(res: Response) -> list[str]:
+    return [t["title"] for t in res.json()]
+
+
+def test_q_keeps_titles_containing_it_ignoring_case() -> None:
+    assert titles(search_client().get("/todos?q=buy")) == ["Buy milk", "buy bread"]
+
+
+def test_q_combines_with_status() -> None:
+    c = search_client()
+    c.post("/todos/3/toggle")
+    c.post("/todos/2/toggle")
+    assert titles(c.get("/todos?q=buy&status=done")) == ["buy bread"]
+
+
+def test_empty_q_returns_the_same_list_as_no_q() -> None:
+    c = search_client()
+    assert titles(c.get("/todos?q=")) == titles(c.get("/todos")) == ["Buy milk", "Call mom", "buy bread"]
