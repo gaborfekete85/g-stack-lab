@@ -1,5 +1,10 @@
 from __future__ import annotations
 
+import tomllib
+from importlib import metadata
+from pathlib import Path
+
+import pytest
 from fastapi.testclient import TestClient
 
 from lab.app import create_app
@@ -114,3 +119,18 @@ def test_rejects_an_unknown_order() -> None:
         res = c.get(f"/todos?sort=title&order={order}")
         assert res.status_code == 400
         assert res.json() == {"error": "order must be one of asc, desc"}
+
+
+def test_version_returns_the_pyproject_version() -> None:
+    pyproject = tomllib.loads((Path(__file__).parents[1] / "pyproject.toml").read_text())
+    res = client().get("/version")
+    assert res.status_code == 200
+    assert res.json() == {"version": pyproject["project"]["version"]}
+
+
+def test_version_follows_the_package_metadata(monkeypatch: pytest.MonkeyPatch) -> None:
+    for fake in ("9.9.9", "0.2.0rc1"):
+        monkeypatch.setattr(metadata, "version", {"g-stack-lab": fake}.__getitem__)
+        res = client().get("/version")
+        assert res.status_code == 200
+        assert res.json() == {"version": fake}
