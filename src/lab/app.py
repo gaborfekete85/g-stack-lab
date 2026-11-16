@@ -62,6 +62,15 @@ def create_app(store: Store | None = None) -> FastAPI:
             return JSONResponse({"error": "title is required"}, 400)
         return JSONResponse(store.add(title).to_json(), 201)
 
+    @app.delete("/todos")
+    def clear_done(status: str | None = None) -> Response:
+        if status != "done":
+            return JSONResponse({"error": "status=done is required"}, 400)
+        done = store.list("done")
+        for todo in done:
+            store.remove(todo.id)
+        return JSONResponse({"removed": len(done)})
+
     @app.get("/todos/{todo_id}")
     def get_todo(todo_id: int) -> Response:
         todo = store.get(todo_id)
