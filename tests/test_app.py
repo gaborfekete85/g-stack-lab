@@ -50,3 +50,25 @@ def test_serves_the_ui() -> None:
     res = client().get("/")
     assert res.status_code == 200
     assert "<title>g-stack lab · todos</title>" in res.text
+
+
+def _three_todos() -> TestClient:
+    c = client()
+    for title in ("a", "b", "c"):
+        c.post("/todos", json={"title": title})
+    return c
+
+
+def test_limit_caps_the_number_of_todos() -> None:
+    body = _three_todos().get("/todos?limit=2").json()
+    assert len(body) <= 2
+
+
+def test_limit_must_be_positive() -> None:
+    c = _three_todos()
+    assert c.get("/todos?limit=0").status_code == 400
+    assert c.get("/todos?limit=-1").status_code == 400
+
+
+def test_no_limit_returns_everything() -> None:
+    assert len(_three_todos().get("/todos").json()) == 3
