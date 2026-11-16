@@ -50,3 +50,19 @@ def test_serves_the_ui() -> None:
     res = client().get("/")
     assert res.status_code == 200
     assert "<title>g-stack lab · todos</title>" in res.text
+
+
+def test_health_returns_ok() -> None:
+    res = client().get("/health")
+    assert res.status_code == 200
+    assert res.json() == {"status": "ok"}
+
+
+def test_health_returns_ok_when_the_store_holds_3_todos() -> None:
+    c = client()
+    for title in ("a", "b", "c"):
+        c.post("/todos", json={"title": title})
+    assert len(c.get("/todos").json()) == 3
+    res = c.get("/health")
+    assert res.status_code == 200
+    assert res.json() == {"status": "ok"}
