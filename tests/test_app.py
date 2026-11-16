@@ -50,3 +50,34 @@ def test_serves_the_ui() -> None:
     res = client().get("/")
     assert res.status_code == 200
     assert "<title>g-stack lab · todos</title>" in res.text
+
+
+def titles(c: TestClient, url: str) -> list[str]:
+    return [t["title"] for t in c.get(url).json()]
+
+
+def test_sort_by_title_is_case_insensitive() -> None:
+    c = client()
+    for title in ("banana", "Apple", "cherry"):
+        c.post("/todos", json={"title": title})
+    assert titles(c, "/todos?sort=title") == ["Apple", "banana", "cherry"]
+
+    c = client()
+    for title in ("apple", "Cherry", "Banana"):
+        c.post("/todos", json={"title": title})
+    assert titles(c, "/todos?sort=title") == ["apple", "Banana", "Cherry"]
+
+
+def test_without_sort_the_list_keeps_creation_order() -> None:
+    c = client()
+    for title in ("banana", "Apple", "cherry"):
+        c.post("/todos", json={"title": title})
+    assert titles(c, "/todos") == ["banana", "Apple", "cherry"]
+
+
+def test_rejects_an_unknown_sort() -> None:
+    c = client()
+    for sort in ("size", "TITLE"):
+        res = c.get(f"/todos?sort={sort}")
+        assert res.status_code == 400
+        assert res.json() == {"error": "sort must be one of title"}
