@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import hmac
+import os
 from pathlib import Path
 from typing import Any
 
@@ -81,6 +83,14 @@ def create_app(store: Store | None = None) -> FastAPI:
         todo = store.rename(todo_id, title)
         assert todo is not None
         return JSONResponse(todo.to_json())
+
+    @app.get("/admin/stats")
+    def admin_stats(request: Request) -> Response:
+        expected = os.environ.get("LAB_ADMIN_TOKEN", "")
+        given = request.headers.get("X-Admin-Token", "")
+        if not expected or not hmac.compare_digest(given.encode(), expected.encode()):
+            return JSONResponse({"error": "admin token required"}, 401)
+        return JSONResponse({"total": len(store.list())})
 
     @app.delete("/todos/{todo_id}")
     def delete_todo(todo_id: int) -> Response:
