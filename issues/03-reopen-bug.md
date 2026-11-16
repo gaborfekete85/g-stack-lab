@@ -20,7 +20,7 @@ Reopening a todo must leave it in the same state as a todo that was never comple
 
 ## Acceptance Criteria
 - [ ] After done-then-reopen, `GET /todos?status=open` includes the todo
-- [ ] After done-then-reopen, the todo's `completedAt` is `null`
+- [ ] After done-then-reopen, the todo's `completed_at` is `null`
 - [ ] `GET /todos?status=done` does not include the reopened todo
 
 ## Risk
