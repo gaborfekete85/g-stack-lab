@@ -36,7 +36,8 @@ def create_app(store: Store | None = None) -> FastAPI:
     def list_todos(status: str = "all") -> Response:
         if status not in STATUSES:
             return JSONResponse({"error": f"status must be one of {', '.join(STATUSES)}"}, 400)
-        return JSONResponse([t.to_json() for t in store.list(status)])
+        todos = store.list(status)
+        return JSONResponse([t.to_json() for t in todos], headers={"X-Total-Count": str(len(todos))})
 
     @app.post("/todos")
     async def create_todo(request: Request) -> Response:
