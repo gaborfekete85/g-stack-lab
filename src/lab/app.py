@@ -40,7 +40,7 @@ def create_app(store: Store | None = None) -> FastAPI:
         return {"version": metadata.version("g-stack-lab")}
 
     @app.get("/todos")
-    def list_todos(status: str = "all", sort: str | None = None, order: str | None = None) -> Response:
+    def list_todos(status: str = "all", q: str = "", sort: str | None = None, order: str | None = None) -> Response:
         if status not in STATUSES:
             return JSONResponse({"error": f"status must be one of {', '.join(STATUSES)}"}, 400)
         if sort is not None and sort not in SORTS:
@@ -49,7 +49,8 @@ def create_app(store: Store | None = None) -> FastAPI:
             return JSONResponse({"error": "order needs sort"}, 400)
         if order is not None and order not in ORDERS:
             return JSONResponse({"error": f"order must be one of {', '.join(ORDERS)}"}, 400)
-        todos = store.list(status)
+        needle = q.casefold()
+        todos = [t for t in store.list(status) if needle in t.title.casefold()]
         if sort == "title":
             todos.sort(key=lambda t: t.title.casefold(), reverse=order == "desc")
         return JSONResponse([t.to_json() for t in todos])

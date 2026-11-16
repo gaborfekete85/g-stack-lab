@@ -134,3 +134,32 @@ def test_version_follows_the_package_metadata(monkeypatch: pytest.MonkeyPatch) -
         res = client().get("/version")
         assert res.status_code == 200
         assert res.json() == {"version": fake}
+
+
+def search_client() -> TestClient:
+    c = client()
+    for title in ("Buy milk", "Call mom", "buy bread"):
+        c.post("/todos", json={"title": title})
+    return c
+
+
+def test_q_keeps_titles_containing_it_ignoring_case() -> None:
+    assert titles(search_client(), "/todos?q=buy") == ["Buy milk", "buy bread"]
+
+
+def test_q_combines_with_status() -> None:
+    c = search_client()
+    ids = {t["title"]: t["id"] for t in c.get("/todos").json()}
+    for done_title in ("buy bread", "Call mom"):  # "Call mom" is done but must not match q
+        c.post(f"/todos/{ids[done_title]}/toggle")
+    assert titles(c, "/todos?q=buy&status=done") == ["buy bread"]
+
+
+def test_empty_q_returns_the_same_list_as_no_q() -> None:
+    c = search_client()
+    assert titles(c, "/todos?q=") == titles(c, "/todos") == ["Buy milk", "Call mom", "buy bread"]
+
+
+def test_q_matches_inside_a_title_not_only_at_the_start() -> None:
+    assert titles(search_client(), "/todos?q=uy%20b") == ["buy bread"]
+    assert titles(search_client(), "/todos?q=MOM") == ["Call mom"]
