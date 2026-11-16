@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import pytest
 from fastapi.testclient import TestClient
 
 from lab.app import create_app
@@ -114,3 +115,46 @@ def test_rejects_an_unknown_order() -> None:
         res = c.get(f"/todos?sort=title&order={order}")
         assert res.status_code == 400
         assert res.json() == {"error": "order must be one of asc, desc"}
+
+
+ADMIN_DENIED = {"error": "admin token required"}
+
+
+def admin_client(monkeypatch: pytest.MonkeyPatch, token: str | None, todos: int = 2) -> TestClient:
+    if token is None:
+        monkeypatch.delenv("LAB_ADMIN_TOKEN", raising=False)
+    else:
+        monkeypatch.setenv("LAB_ADMIN_TOKEN", token)
+    c = client()
+    for i in range(todos):
+        c.post("/todos", json={"title": f"t{i}"})
+    return c
+
+
+def test_admin_stats_returns_the_total_with_the_right_token(monkeypatch: pytest.MonkeyPatch) -> None:
+    c = admin_client(monkeypatch, "s3cret")
+    res = c.get("/admin/stats", headers={"X-Admin-Token": "s3cret"})
+    assert res.status_code == 200
+    assert res.json() == {"total": 2}
+    c.post("/todos", json={"title": "third"})
+    c.post("/todos/1/toggle")
+    assert c.get("/admin/stats", headers={"X-Admin-Token": "s3cret"}).json() == {"total": 3}
+
+
+@pytest.mark.parametrize(
+    "headers", [{"X-Admin-Token": "wrong"}, {"X-Admin-Token": "S3CRET"}, {"X-Admin-Token": ""}, {}]
+)
+def test_admin_stats_rejects_a_wrong_or_missing_token(monkeypatch: pytest.MonkeyPatch, headers: dict[str, str]) -> None:
+    res = admin_client(monkeypatch, "s3cret").get("/admin/stats", headers=headers)
+    assert res.status_code == 401
+    assert res.json() == ADMIN_DENIED
+
+
+@pytest.mark.parametrize("env", [None, ""])
+@pytest.mark.parametrize("headers", [{"X-Admin-Token": "s3cret"}, {"X-Admin-Token": ""}, {}])
+def test_admin_stats_is_closed_without_a_configured_token(
+    monkeypatch: pytest.MonkeyPatch, env: str | None, headers: dict[str, str]
+) -> None:
+    res = admin_client(monkeypatch, env).get("/admin/stats", headers=headers)
+    assert res.status_code == 401
+    assert res.json() == ADMIN_DENIED
