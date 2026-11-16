@@ -70,8 +70,9 @@ def test_q_keeps_titles_containing_it_ignoring_case() -> None:
 
 def test_q_combines_with_status() -> None:
     c = search_client()
-    c.post("/todos/3/toggle")
-    c.post("/todos/2/toggle")
+    ids = {t["title"]: t["id"] for t in c.get("/todos").json()}
+    for done_title in ("buy bread", "Call mom"):  # "Call mom" is done but must not match q
+        c.post(f"/todos/{ids[done_title]}/toggle")
     assert titles(c.get("/todos?q=buy&status=done")) == ["buy bread"]
 
 
