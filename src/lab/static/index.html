@@ -41,7 +41,9 @@
           box.setAttribute('aria-label', `Toggle ${todo.title}`)
           box.addEventListener('change', async () => {
             await fetch(`/todos/${todo.id}/toggle`, { method: 'POST' })
-            renderList(await fetchTodos())
+            const todos = await fetchTodos()
+            renderList(todos)
+            renderRemaining(todos)
           })
           const span = document.createElement('span')
           span.textContent = todo.title
