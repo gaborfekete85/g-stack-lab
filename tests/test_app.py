@@ -51,6 +51,39 @@ def test_unknown_ids_are_404_on_every_route() -> None:
     assert c.delete("/todos/9").status_code == 404
 
 
+NOT_FOUND = {"error": "todo not found"}
+
+
+def test_non_numeric_ids_are_404_on_every_route() -> None:
+    c = client()
+    c.post("/todos", json={"title": "a"})
+    for bad in ("abc", "1.5", "1a", "one"):
+        for res in (
+            c.get(f"/todos/{bad}"),
+            c.post(f"/todos/{bad}/toggle"),
+            c.patch(f"/todos/{bad}", json={"title": "x"}),
+            c.delete(f"/todos/{bad}"),
+        ):
+            assert (res.status_code, res.json()) == (404, NOT_FOUND)
+    assert c.get("/todos/1").json()["title"] == "a"
+
+
+def test_unknown_numeric_ids_get_the_same_404_body_on_every_route() -> None:
+    c = client()
+    for res in (
+        c.get("/todos/9"),
+        c.post("/todos/9/toggle"),
+        c.patch("/todos/9", json={"title": "x"}),
+        c.delete("/todos/9"),
+    ):
+        assert (res.status_code, res.json()) == (404, NOT_FOUND)
+
+
+def test_the_404_body_is_written_once_in_the_app() -> None:
+    source = (Path(__file__).parents[1] / "src" / "lab" / "app.py").read_text()
+    assert source.count('"todo not found"') == 1
+
+
 def test_serves_the_ui() -> None:
     res = client().get("/")
     assert res.status_code == 200
