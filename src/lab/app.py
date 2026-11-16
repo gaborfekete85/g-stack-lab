@@ -9,6 +9,7 @@ from fastapi.responses import HTMLResponse, JSONResponse
 from .store import STATUSES, Store
 
 INDEX_HTML = Path(__file__).parent / "static" / "index.html"
+MAX_TITLE = 200
 
 
 async def _json_body(request: Request) -> dict[str, Any]:
@@ -43,6 +44,8 @@ def create_app(store: Store | None = None) -> FastAPI:
         title = _title(await _json_body(request))
         if title is None:
             return JSONResponse({"error": "title is required"}, 400)
+        if len(title) > MAX_TITLE:
+            return JSONResponse({"error": f"title must be at most {MAX_TITLE} characters"}, 400)
         return JSONResponse(store.add(title).to_json(), 201)
 
     @app.get("/todos/{todo_id}")
@@ -67,6 +70,8 @@ def create_app(store: Store | None = None) -> FastAPI:
         title = _title(await _json_body(request))
         if title is None:
             return JSONResponse({"error": "title is required"}, 400)
+        if len(title) > MAX_TITLE:
+            return JSONResponse({"error": f"title must be at most {MAX_TITLE} characters"}, 400)
         todo = store.rename(todo_id, title)
         assert todo is not None
         return JSONResponse(todo.to_json())
