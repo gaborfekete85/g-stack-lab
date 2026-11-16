@@ -32,6 +32,10 @@ def create_app(store: Store | None = None) -> FastAPI:
     def index() -> str:
         return INDEX_HTML.read_text()
 
+    @app.get("/health")
+    def health() -> dict[str, str]:
+        return {"status": "ok"}
+
     @app.get("/todos")
     def list_todos(status: str = "all") -> Response:
         if status not in STATUSES:
