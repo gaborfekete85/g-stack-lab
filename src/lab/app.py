@@ -6,7 +6,6 @@ from typing import Any
 from fastapi import FastAPI, Request, Response
 from fastapi.responses import HTMLResponse, JSONResponse
 
-from .paging import LimitStrategy, paginate
 from .store import STATUSES, Store
 
 INDEX_HTML = Path(__file__).parent / "static" / "index.html"
@@ -20,7 +19,7 @@ async def _json_body(request: Request) -> dict[str, Any]:
     return body if isinstance(body, dict) else {}
 
 
-def _parse_title(body: dict[str, Any]) -> str | None:
+def _title(body: dict[str, Any]) -> str | None:
     title = body.get("title")
     return title.strip() if isinstance(title, str) and title.strip() else None
 
@@ -39,12 +38,12 @@ def create_app(store: Store | None = None) -> FastAPI:
             return JSONResponse({"error": f"status must be one of {', '.join(STATUSES)}"}, 400)
         if limit is not None and limit < 1:
             return JSONResponse({"error": "limit must be a positive integer"}, 400)
-        todos = paginate(store.list(status), LimitStrategy(limit) if limit is not None else None)
-        return JSONResponse([t.to_json() for t in todos])
+        todos = store.list(status)
+        return JSONResponse([t.to_json() for t in todos[:limit]])
 
     @app.post("/todos")
     async def create_todo(request: Request) -> Response:
-        title = _parse_title(await _json_body(request))
+        title = _title(await _json_body(request))
         if title is None:
             return JSONResponse({"error": "title is required"}, 400)
         return JSONResponse(store.add(title).to_json(), 201)
@@ -68,7 +67,7 @@ def create_app(store: Store | None = None) -> FastAPI:
     async def rename_todo(todo_id: int, request: Request) -> Response:
         if store.get(todo_id) is None:
             return JSONResponse({"error": "todo not found"}, 404)
-        title = _parse_title(await _json_body(request))
+        title = _title(await _json_body(request))
         if title is None:
             return JSONResponse({"error": "title is required"}, 400)
         todo = store.rename(todo_id, title)
