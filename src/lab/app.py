@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from importlib import metadata
 from pathlib import Path
 from typing import Any
 
@@ -9,6 +10,8 @@ from fastapi.responses import HTMLResponse, JSONResponse
 from .store import STATUSES, Store
 
 INDEX_HTML = Path(__file__).parent / "static" / "index.html"
+SORTS = ("title",)
+ORDERS = ("asc", "desc")
 
 
 async def _json_body(request: Request) -> dict[str, Any]:
@@ -32,13 +35,30 @@ def create_app(store: Store | None = None) -> FastAPI:
     def index() -> str:
         return INDEX_HTML.read_text()
 
+    @app.get("/version")
+    def get_version() -> dict[str, str]:
+        return {"version": metadata.version("g-stack-lab")}
+
     @app.get("/todos")
-    def list_todos(status: str = "all", limit: int | None = None) -> Response:
+    def list_todos(
+        status: str = "all",
+        sort: str | None = None,
+        order: str | None = None,
+        limit: int | None = None,
+    ) -> Response:
         if status not in STATUSES:
             return JSONResponse({"error": f"status must be one of {', '.join(STATUSES)}"}, 400)
+        if sort is not None and sort not in SORTS:
+            return JSONResponse({"error": f"sort must be one of {', '.join(SORTS)}"}, 400)
+        if order is not None and sort is None:
+            return JSONResponse({"error": "order needs sort"}, 400)
+        if order is not None and order not in ORDERS:
+            return JSONResponse({"error": f"order must be one of {', '.join(ORDERS)}"}, 400)
         if limit is not None and limit < 1:
             return JSONResponse({"error": "limit must be a positive integer"}, 400)
         todos = store.list(status)
+        if sort == "title":
+            todos.sort(key=lambda t: t.title.casefold(), reverse=order == "desc")
         return JSONResponse([t.to_json() for t in todos[:limit]])
 
     @app.post("/todos")
