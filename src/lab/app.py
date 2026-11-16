@@ -33,10 +33,11 @@ def create_app(store: Store | None = None) -> FastAPI:
         return INDEX_HTML.read_text()
 
     @app.get("/todos")
-    def list_todos(status: str = "all") -> Response:
+    def list_todos(status: str = "all", q: str = "") -> Response:
         if status not in STATUSES:
             return JSONResponse({"error": f"status must be one of {', '.join(STATUSES)}"}, 400)
-        return JSONResponse([t.to_json() for t in store.list(status)])
+        needle = q.casefold()
+        return JSONResponse([t.to_json() for t in store.list(status) if needle in t.title.casefold()])
 
     @app.post("/todos")
     async def create_todo(request: Request) -> Response:
