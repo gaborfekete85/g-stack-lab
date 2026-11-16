@@ -9,3 +9,5 @@ uv run uvicorn lab.app:app --reload    # http://localhost:8000
 ```
 
 Seed (or re-sync) the GitHub issues: `uv run python scripts/seed_issues.py <owner/repo> [--update]`.
+
+# race: a late push after the review
