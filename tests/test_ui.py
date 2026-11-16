@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import socket
 import threading
+import time
 from collections.abc import Iterator
 
 import pytest
@@ -29,8 +30,9 @@ def page() -> Iterator[Page]:
     server = uvicorn.Server(uvicorn.Config(create_app(store), host="127.0.0.1", port=port, log_level="warning"))
     thread = threading.Thread(target=server.run, daemon=True)
     thread.start()
-    while not server.started:
-        threading.Event().wait(0.01)
+    while not server.started and thread.is_alive():
+        time.sleep(0.01)
+    assert server.started, "test server did not start"
     try:
         with sync_playwright() as p:
             browser = p.chromium.launch()
