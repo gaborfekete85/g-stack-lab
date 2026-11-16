@@ -50,3 +50,24 @@ def test_serves_the_ui() -> None:
     res = client().get("/")
     assert res.status_code == 200
     assert "<title>g-stack lab · todos</title>" in res.text
+
+
+def test_list_has_total_count_header() -> None:
+    c = client()
+    for title in ("a", "b", "c"):
+        c.post("/todos", json={"title": title})
+    assert c.get("/todos").headers["X-Total-Count"] == "3"
+
+
+def test_total_count_header_counts_the_filtered_list() -> None:
+    c = client()
+    for title in ("a", "b", "c"):
+        c.post("/todos", json={"title": title})
+    c.post("/todos/2/toggle")
+    assert c.get("/todos?status=open").headers["X-Total-Count"] == "2"
+    assert c.get("/todos?status=done").headers["X-Total-Count"] == "1"
+    assert c.get("/todos?status=all").headers["X-Total-Count"] == "3"
+
+
+def test_total_count_header_is_zero_with_no_todos() -> None:
+    assert client().get("/todos").headers["X-Total-Count"] == "0"
