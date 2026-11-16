@@ -59,9 +59,15 @@ def _three_todos() -> TestClient:
     return c
 
 
+def _ids(c: TestClient, url: str) -> list[int]:
+    return [t["id"] for t in c.get(url).json()]
+
+
 def test_limit_caps_the_number_of_todos() -> None:
-    body = _three_todos().get("/todos?limit=2").json()
-    assert len(body) <= 2
+    c = _three_todos()
+    assert _ids(c, "/todos?limit=2") == [1, 2]
+    assert _ids(c, "/todos?limit=1") == [1]
+    assert _ids(c, "/todos?limit=3") == [1, 2, 3]
 
 
 def test_limit_must_be_positive() -> None:
@@ -71,4 +77,4 @@ def test_limit_must_be_positive() -> None:
 
 
 def test_no_limit_returns_everything() -> None:
-    assert len(_three_todos().get("/todos").json()) == 3
+    assert _ids(_three_todos(), "/todos") == [1, 2, 3]
