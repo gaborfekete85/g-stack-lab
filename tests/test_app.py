@@ -50,3 +50,30 @@ def test_serves_the_ui() -> None:
     res = client().get("/")
     assert res.status_code == 200
     assert "<title>g-stack lab · todos</title>" in res.text
+
+
+TOO_LONG = {"error": "title must be at most 200 characters"}
+
+
+def test_create_rejects_a_201_character_title_and_creates_nothing() -> None:
+    c = client()
+    res = c.post("/todos", json={"title": "a" * 201})
+    assert res.status_code == 400
+    assert res.json() == TOO_LONG
+    assert c.get("/todos").json() == []
+
+
+def test_create_accepts_a_200_character_title() -> None:
+    res = client().post("/todos", json={"title": "a" * 200})
+    assert res.status_code == 201
+    assert res.json()["title"] == "a" * 200
+
+
+def test_rename_rejects_a_201_character_title_and_keeps_the_old_one() -> None:
+    c = client()
+    c.post("/todos", json={"title": "old"})
+    res = c.patch("/todos/1", json={"title": "b" * 201})
+    assert res.status_code == 400
+    assert res.json() == TOO_LONG
+    assert c.get("/todos/1").json()["title"] == "old"
+    assert c.patch("/todos/1", json={"title": "b" * 200}).json()["title"] == "b" * 200
