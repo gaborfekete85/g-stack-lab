@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from importlib import metadata
 from pathlib import Path
 from typing import Any
 
@@ -33,6 +34,10 @@ def create_app(store: Store | None = None) -> FastAPI:
     @app.get("/", response_class=HTMLResponse)
     def index() -> str:
         return INDEX_HTML.read_text()
+
+    @app.get("/version")
+    def get_version() -> dict[str, str]:
+        return {"version": metadata.version("g-stack-lab")}
 
     @app.get("/todos")
     def list_todos(status: str = "all", sort: str | None = None, order: str | None = None) -> Response:
