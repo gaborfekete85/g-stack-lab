@@ -158,3 +158,8 @@ def test_q_combines_with_status() -> None:
 def test_empty_q_returns_the_same_list_as_no_q() -> None:
     c = search_client()
     assert titles(c, "/todos?q=") == titles(c, "/todos") == ["Buy milk", "Call mom", "buy bread"]
+
+
+def test_q_matches_inside_a_title_not_only_at_the_start() -> None:
+    assert titles(search_client(), "/todos?q=uy%20b") == ["buy bread"]
+    assert titles(search_client(), "/todos?q=MOM") == ["Call mom"]
