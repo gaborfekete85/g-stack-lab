@@ -6,6 +6,7 @@ The test bench for g-stack, a personal software factory. A small todo app (Pytho
 
 ```bash
 uv sync
+uv run playwright install --only-shell chromium     # once: the browser tests/test_ui.py drives
 uv run ruff check . && uv run mypy && uv run pytest    # the project's verify command
 uv run uvicorn lab.app:app --reload                     # http://localhost:8000
 ```

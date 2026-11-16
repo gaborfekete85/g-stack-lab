@@ -41,3 +41,28 @@ def test_rename_remove_and_unknown_ids() -> None:
     assert s.get(todo_id) is None
     assert s.toggle(99) is None
     assert s.remove(99) is False
+
+
+def reopened() -> tuple[Store, int]:
+    s = Store(fixed)
+    todo_id = s.add("a").id
+    s.toggle(todo_id)
+    s.toggle(todo_id)
+    return s, todo_id
+
+
+def test_reopened_todo_is_listed_as_open() -> None:
+    s, todo_id = reopened()
+    assert [t.id for t in s.list("open")] == [todo_id]
+
+
+def test_reopened_todo_has_no_completed_at() -> None:
+    s, todo_id = reopened()
+    todo = s.get(todo_id)
+    assert todo is not None
+    assert todo.completed_at is None
+
+
+def test_reopened_todo_is_not_listed_as_done() -> None:
+    s, _ = reopened()
+    assert s.list("done") == []
