@@ -45,6 +45,12 @@ def create_app(store: Store | None = None) -> FastAPI:
             return JSONResponse({"error": "title is required"}, 400)
         return JSONResponse(store.add(title).to_json(), 201)
 
+    @app.get("/todos/stats")
+    def todo_stats() -> Response:
+        todos = store.list()
+        done = sum(t.done for t in todos)
+        return JSONResponse({"open": len(todos) - done, "done": done, "total": len(todos)})
+
     @app.get("/todos/{todo_id}")
     def get_todo(todo_id: int) -> Response:
         todo = store.get(todo_id)
