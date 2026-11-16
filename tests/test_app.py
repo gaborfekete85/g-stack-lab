@@ -50,3 +50,31 @@ def test_serves_the_ui() -> None:
     res = client().get("/")
     assert res.status_code == 200
     assert "<title>g-stack lab · todos</title>" in res.text
+
+
+def three_todos_two_done() -> TestClient:
+    c = client()
+    for title in ("a", "b", "c"):
+        c.post("/todos", json={"title": title})
+    c.post("/todos/1/toggle")
+    c.post("/todos/3/toggle")
+    return c
+
+
+def test_clear_done_reports_how_many_were_removed() -> None:
+    res = three_todos_two_done().delete("/todos?status=done")
+    assert res.status_code == 200
+    assert res.json() == {"removed": 2}
+
+
+def test_clear_done_leaves_only_the_open_todo() -> None:
+    c = three_todos_two_done()
+    c.delete("/todos?status=done")
+    assert [t["title"] for t in c.get("/todos").json()] == ["b"]
+
+
+def test_clear_without_status_done_is_400_and_removes_nothing() -> None:
+    c = three_todos_two_done()
+    assert c.delete("/todos").status_code == 400
+    assert c.delete("/todos?status=open").status_code == 400
+    assert len(c.get("/todos").json()) == 3
