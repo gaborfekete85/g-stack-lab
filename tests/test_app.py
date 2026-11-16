@@ -50,3 +50,29 @@ def test_serves_the_ui() -> None:
     res = client().get("/")
     assert res.status_code == 200
     assert "<title>g-stack lab · todos</title>" in res.text
+
+
+def test_stats_counts_open_done_and_total() -> None:
+    c = client()
+    for title in ("a", "b", "c"):
+        c.post("/todos", json={"title": title})
+    c.post("/todos/2/toggle")
+    res = c.get("/todos/stats")
+    assert res.status_code == 200
+    assert res.json() == {"open": 2, "done": 1, "total": 3}
+
+
+def test_stats_with_no_todos_is_all_zero() -> None:
+    res = client().get("/todos/stats")
+    assert res.status_code == 200
+    assert res.json() == {"open": 0, "done": 0, "total": 0}
+
+
+def test_stats_counts_a_reopened_todo_as_open() -> None:
+    c = client()
+    c.post("/todos", json={"title": "reopened"})
+    c.post("/todos", json={"title": "finished"})
+    c.post("/todos/1/toggle")
+    c.post("/todos/1/toggle")
+    c.post("/todos/2/toggle")
+    assert c.get("/todos/stats").json() == {"open": 1, "done": 1, "total": 2}
