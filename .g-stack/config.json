@@ -1,4 +1,19 @@
 {
   "base_branch": "main",
-  "verify_commands": ["uv run ruff check .", "uv run mypy", "uv run pytest -q"]
+  "verify_commands": [
+    "uv run ruff check .",
+    "uv run mypy",
+    "uv run pytest -q"
+  ],
+  "merge_policy": {
+    "default": "auto",
+    "auto_max_lines": 400,
+    "always_human": {
+      "labels": [
+        "money",
+        "auth",
+        "schema"
+      ]
+    }
+  }
 }

@@ -55,8 +55,7 @@ class Store:
         if todo is None:
             return None
         todo.done = not todo.done
-        if todo.done:
-            todo.completed_at = self._now().isoformat()
+        todo.completed_at = self._now().isoformat() if todo.done else None
         return todo
 
     def rename(self, todo_id: int, title: str) -> Todo | None:
