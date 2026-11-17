@@ -12,7 +12,7 @@ Add `Store.count(status)` returning how many todos match the status filter, with
 
 ## Acceptance Criteria
 - [ ] With three todos, one completed, `count("all")` is 3, `count("open")` is 2 and `count("done")` is 1
-- [ ] An unknown status raises the same error `Store.list` raises for it
+- [ ] `count("bogus")` raises `ValueError` whose message names the allowed statuses `all`, `open` and `done`
 - [ ] `count` gives the same number as `len(list(status))` for every status after add, toggle and delete
 
 ## Risk
