@@ -7,30 +7,99 @@
     <style>
       body { font-family: system-ui, sans-serif; max-width: 32rem; margin: 2rem auto; padding: 0 1rem; }
       form { display: flex; gap: 0.5rem; }
-      input[type='text'] { flex: 1; padding: 0.4rem; }
+      input[type='text'],
+      button[type='submit'] {
+        font: inherit;
+        font-size: 1rem;
+        padding: 0.5rem 0.75rem;
+        border: 1px solid #ccc;
+        border-radius: 6px;
+        min-height: 44px;
+        box-sizing: border-box;
+      }
+      input[type='text'] { flex: 1; min-width: 0; }
+      button[type='submit'] { background: #2563eb; border-color: #2563eb; color: #fff; cursor: pointer; }
+      button[type='submit']:hover,
+      button[type='submit']:focus-visible { background: #1d4ed8; border-color: #1d4ed8; }
+      button[type='submit']:disabled { opacity: 0.6; cursor: progress; }
+      input[type='text']:focus-visible,
+      button:focus-visible { outline: 2px solid #2563eb; outline-offset: 2px; }
+      .error { color: #b91c1c; margin: 0.5rem 0 0; }
+      .error:empty { display: none; }
       ul { list-style: none; padding: 0; }
       li { display: flex; gap: 0.5rem; align-items: center; padding: 0.3rem 0; }
       li.done span { text-decoration: line-through; color: #888; }
+      li.status { display: block; color: #666; padding-top: 1rem; }
+      li.status.error { color: #b91c1c; }
+      .delete {
+        margin-left: auto;
+        background: none;
+        border: 1px solid transparent;
+        border-radius: 6px;
+        color: #666;
+        font-size: 1.1rem;
+        min-width: 44px;
+        min-height: 44px;
+        cursor: pointer;
+      }
+      .delete:hover,
+      .delete:focus-visible { color: #b91c1c; border-color: #ccc; }
     </style>
   </head>
   <body>
     <h1>Todos <small id="remaining" data-testid="remaining"></small></h1>
     <form id="add">
-      <input type="text" name="title" placeholder="What needs doing?" aria-label="New todo" />
+      <input type="text" name="title" placeholder="What needs doing?" aria-label="New todo" required maxlength="200" />
       <button type="submit">Add</button>
     </form>
-    <ul id="list" data-testid="list"></ul>
+    <p id="add-error" class="error" role="alert"></p>
+    <ul id="list" data-testid="list"><li class="status">Loading…</li></ul>
 
     <script>
       const list = document.getElementById('list')
       const remaining = document.getElementById('remaining')
+      const addError = document.getElementById('add-error')
 
       async function fetchTodos() {
         const res = await fetch('/todos')
+        if (!res.ok) throw new Error(`Could not load todos (HTTP ${res.status}).`)
         return res.json()
       }
 
+      async function errorText(res) {
+        try {
+          const body = await res.json()
+          return body.detail || body.error || `Request failed (HTTP ${res.status}).`
+        } catch {
+          return `Request failed (HTTP ${res.status}).`
+        }
+      }
+
+      function statusLine(text, isError) {
+        list.innerHTML = ''
+        const li = document.createElement('li')
+        li.className = isError ? 'status error' : 'status'
+        if (isError) li.setAttribute('role', 'alert')
+        li.textContent = text
+        list.append(li)
+      }
+
+      async function refresh() {
+        try {
+          const todos = await fetchTodos()
+          renderList(todos)
+          renderRemaining(todos)
+        } catch (err) {
+          statusLine(err.message || 'Could not load todos.', true)
+          remaining.textContent = ''
+        }
+      }
+
       function renderList(todos) {
+        if (todos.length === 0) {
+          statusLine('Nothing to do yet. Add your first todo above.', false)
+          return
+        }
         list.innerHTML = ''
         for (const todo of todos) {
           const li = document.createElement('li')
@@ -41,18 +110,31 @@
           box.setAttribute('aria-label', `Toggle ${todo.title}`)
           box.addEventListener('change', async () => {
             await fetch(`/todos/${todo.id}/toggle`, { method: 'POST' })
-            const todos = await fetchTodos()
-            renderList(todos)
-            renderRemaining(todos)
+            await refresh()
           })
           const span = document.createElement('span')
           span.textContent = todo.title
-          li.append(box, span)
+          const del = document.createElement('button')
+          del.type = 'button'
+          del.className = 'delete'
+          del.textContent = '×'
+          del.setAttribute('aria-label', `Delete ${todo.title}`)
+          del.addEventListener('click', async () => {
+            del.disabled = true
+            const res = await fetch(`/todos/${todo.id}`, { method: 'DELETE' })
+            if (!res.ok) addError.textContent = await errorText(res)
+            await refresh()
+          })
+          li.append(box, span, del)
           list.append(li)
         }
       }
 
       function renderRemaining(todos) {
+        if (todos.length === 0) {
+          remaining.textContent = ''
+          return
+        }
         const open = todos.filter((t) => !t.done).length
         remaining.textContent = `(${open} left)`
       }
@@ -60,21 +142,37 @@
       document.getElementById('add').addEventListener('submit', async (e) => {
         e.preventDefault()
         const input = e.target.elements.title
-        const res = await fetch('/todos', {
-          method: 'POST',
-          headers: { 'content-type': 'application/json' },
-          body: JSON.stringify({ title: input.value }),
-        })
-        if (res.ok) input.value = ''
-        const todos = await fetchTodos()
-        renderList(todos)
-        renderRemaining(todos)
+        const button = e.target.querySelector('button[type=submit]')
+        const title = input.value.trim()
+        addError.textContent = ''
+        if (!title) {
+          input.value = ''
+          input.focus()
+          return
+        }
+        button.disabled = true
+        button.setAttribute('aria-busy', 'true')
+        try {
+          const res = await fetch('/todos', {
+            method: 'POST',
+            headers: { 'content-type': 'application/json' },
+            body: JSON.stringify({ title }),
+          })
+          if (res.ok) {
+            input.value = ''
+          } else {
+            addError.textContent = await errorText(res)
+          }
+        } catch {
+          addError.textContent = 'Could not reach the server. Try again.'
+        } finally {
+          button.disabled = false
+          button.removeAttribute('aria-busy')
+        }
+        await refresh()
       })
 
-      fetchTodos().then((todos) => {
-        renderList(todos)
-        renderRemaining(todos)
-      })
+      refresh()
     </script>
   </body>
 </html>
